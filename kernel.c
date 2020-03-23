@@ -157,7 +157,7 @@ int main(void) {
 			exit(0);
 		}
 		if (errorCode == 2) {
-			printf("Unknown command\n");
+			printf("Unknown CCommand\n");
 		}
 
 	}
