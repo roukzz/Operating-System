@@ -1,0 +1,8 @@
+set x 10
+print x
+set value 60
+set test 70
+help
+print value
+print test
+quit

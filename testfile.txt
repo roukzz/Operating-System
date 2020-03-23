@@ -1,0 +1,6 @@
+set e 50
+print e
+help
+set test2 23
+set test2 50
+print test2
