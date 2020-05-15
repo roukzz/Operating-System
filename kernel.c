@@ -6,8 +6,15 @@
 #include "pcb.h"
 #include "cpu.h"
 #include "kernel.h"
+#include <io.h>
+#include "memorymanager.h"
 
-char * ram[1000];
+
+
+
+
+char *ram[40];
+PCB* pcbArray[10];
 int pcbCounter = 0;
 
 typedef struct Node {
@@ -17,6 +24,21 @@ typedef struct Node {
 
 Node *head = NULL;
 Node *tail = NULL;
+
+// initialise ram to NULL
+void ini(){
+
+	for (int i = 0; i < 40; i++) {
+			ram[i] = NULL;
+			}
+}
+// initialize pcb array to NULL
+void iniPcbArray(){
+	for (int i=0;i<10;i++){
+		pcbArray[i]=NULL;
+	}
+}
+
 
 // add element to the queue
 void addToReady(struct PCB* pcb) {
@@ -63,64 +85,67 @@ struct Node *removeHead() {
 	}
 }
 
-int myInit(char * fileName) {
 
-	FILE *p = fopen(fileName, "r");
-	// file could not open
-	if (p == NULL) {
-		printf("could not open the file  :%s ", fileName);
-		clearEverything();
-		return 1;
-	}
-	int start;
-	int end;
-	// add each command to the ram
-	addToRAM(p, &start, &end);
-	struct PCB *nPCB = makePCB(start, end);
-	// add PCB to the ready queue
-	addToReady(nPCB);
-	return 0;
-}
 
-void scheduler() {
-	int isEnQ = 0;
 
-	while (tail != NULL) {
+void scheduler(){
+	int isEnque=0;
 
-		if (status == 1) {
+	while (head != NULL && tail !=NULL){// while le ready queue is not empty
 
-			status = 0;
-			Node*current_process = removeHead();
+		Node*current_process = removeHead(); // pop the head pcb
 
-			struct PCB*thisPCB = current_process->nPCB;
-			CPU.IP = thisPCB->PC;
+		struct PCB*currentPCB = current_process->nPCB;
 
-			if (thisPCB->end == thisPCB->start) {
-				isEnQ = 0; //case of an empty script
-			}
+		CPU.offset=currentPCB->PC_offset;
 
-			else if (CPU.IP + CPU.quanta > thisPCB->end + 1) {
-				isEnQ = runQuanta(1);
+		CPU.IP = currentPCB->PC;
 
-			} else {
-				isEnQ = runQuanta(CPU.quanta);
+		isEnque=runQuanta(2);// run process for 2 quanta
 
-				thisPCB->PC = CPU.IP + CPU.quanta;
-				status = 1;
-			}
-			if (thisPCB->PC > thisPCB->end) {
-				isEnQ = 0;
-			}
-			if (isEnQ == 1) {
-				addToReady(thisPCB);
-			}
+		if (isEnque == -2){ // when page fault occurs
+			clearFrame(currentPCB,currentPCB->PC_page);
+			currentPCB->PC_page++;
 
-			else {
+			if (currentPCB->PC_page == currentPCB->pages_max){
+						//clear ram et remove this pcb from queue
+				clearPCB(currentPCB);
+					}else {
+						if (currentPCB->pageTable[currentPCB->PC_page]!=-2){ // page is in ram pc points to a new frame
+							currentPCB->PC= currentPCB->pageTable[currentPCB->PC_page]*4;
+							currentPCB->PC_offset=0;
 
-				clearPCB(thisPCB);
-			}
+						} else {
+							// find victim
+							int frame= findFrame();
+							if (findFrame()!=-1){// when there is empty frame in ram
+								loadPage(currentPCB->PC_page,(fopen(currentPCB->fileName,"r")),frame);
+								updatePageTable(currentPCB,currentPCB->PC_page,frame,-10);
+
+
+							} else{ // when all frame occupied--> find victim
+								int victim = findVictim(currentPCB);
+								loadPage(currentPCB->PC_page,(fopen(currentPCB->fileName,"r")),victim);
+								updatePageTable(currentPCB,currentPCB->PC_page,-1,victim);
+							}
+							currentPCB->PC = currentPCB->pageTable[currentPCB->PC_page]*4;
+							currentPCB->PC_offset=0;
+						}
+						addToReady(currentPCB);
+					}
+		}
+		 else if(isEnque == -1){
+			// clear the pcb clear the ram update pcbArray
+			 clearPCB(currentPCB);
+
+		} else {
+			currentPCB->PC_offset=CPU.offset;
+			currentPCB->PC=currentPCB->pageTable[currentPCB->PC_page]*4+currentPCB->PC_offset;
+			addToReady(currentPCB);
 
 		}
+
+
 	}
 }
 
@@ -134,31 +159,68 @@ void clearEverything() {
 	}
 }
 
-int main(void) {
+
+
+void boot(){
+	// set every cell to NULL
+	ini();
+	// deletes former directory
+	char deleteCmd[30]= "rmdir /q /s BackingStore";
+	system (deleteCmd);
+
+
+	// creating backingStore directory
+	char *BackingStore = "./BackingStore";
+	int dir = mkdir(BackingStore);
+
+
+}
+
+int kernel(){
+
+
 	char prompt[100] = { '$', '\0' };
 	char userInput[1000];
 	int errorCode = 0;
-	initializeRam(ram);
 
 	printf("Kernel 1.0 loaded!\n");
 	printf("Welcome to the Farouk Arab Shell! \n");
-	printf("Version 2.0 Updated February 2020 \n");
+	printf("Version 3.0 Updated April 2020 \n");
 
-	while (1) {
+			while (1) {
 
-		printf("%s", prompt);
-		fgets(userInput, 999, stdin);
+				printf("%s", prompt);
+				fgets(userInput, 999, stdin);
 
-		errorCode = parse(userInput);
-		// reset the user input
-		memset(userInput, '\0', sizeof(char) * 1000);
+				errorCode = parse(userInput);
+				// reset the user input
+				memset(userInput, '\0', sizeof(char) * 1000);
 
-		if (errorCode == 1) {
-			exit(0);
-		}
-		if (errorCode == 2) {
-			printf("Unknown CCommand\n");
-		}
+				if (errorCode == 1) {
+					exit(0);
+				}
+				if (errorCode == 2) {
+					printf("Unknown command\n");
+				} else if (errorCode ==-1){
 
-	}
+					printf("there is more than 10 programs to execute!!");
+
+				}
+
+			}
+
+	return errorCode;
+}
+
+int main(void) {
+	int err = 0;
+
+	boot();
+
+
+	err = kernel();
+
+
+
+
 }

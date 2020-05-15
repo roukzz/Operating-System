@@ -12,10 +12,11 @@ struct thisCPU {
 	int IP;
 	char IR[1000];
 	int quanta;
+	int offset;
 };
 
 int runQuanta(int quanta);
 extern struct thisCPU CPU;
-extern int status;
+
 
 #endif /* CPU_H_ */

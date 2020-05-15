@@ -15,6 +15,7 @@
 #include "shell.h"
 #include "kernel.h"
 #include "ram.h"
+#include "memorymanager.h"
 
 // quit command
 int quit(void) {
@@ -65,9 +66,8 @@ int run(char *words[]) {
 	// iterate through the lines till the end
 	while (!(feof(p))) {
 		// quit the script when quit line was seen
-		printf("line: %s\n", line);
+
 		token = strtok(line, delim);
-		printf("token: %s\n", token);
 
 		// when end of file is not quit
 		if (token == NULL) {
@@ -97,43 +97,33 @@ int run(char *words[]) {
 
 int exec(char * words[], int argc) {
 
-	char* loadedFile[3];
 	int err = 0;
-	int counter = 0;
-
+	// for each program
 	for (int i = 1; i < argc; i++) {
+
+		char string[50] = "BackingStore/";
+
+		char *fileName = strdup(words[i]);
 		//check if input is valid
 		FILE *p = fopen(words[i], "r");
+
 		if (p == NULL) {
 			printf("ERROR. %s not found.\n", words[i]);
 			clearEverything();
 			return err;
-		} else
-			fclose(p);
-	}
+		} else { // file opened
 
-	// verify duplicate elements
-	for (int i = 1; i < argc; i++) {
-		for (int j = 0; j < counter; j++) {
-			// duplicate element detected
-			if (strcmp(words[i], loadedFile[j]) == 0) {
-				//printf("i = %d",i);
-				printf("%s already loaded.\n", words[i]);
-				clearEverything();
+			strcat(string, fileName);
+
+			err = launcher(p, string);
+			if (err != 0) {
 				return err;
 			}
-		}
 
-		err = myInit(words[i]);
-		if (err == 1) {
-			clearEverything();
-			return 0;
 		}
-		loadedFile[i - 1] = words[i];
-		counter++;
 	}
+
 	scheduler();
-	initializeRam(ram);
 	return err;
 }
 
