@@ -4,6 +4,11 @@ OS: MS windows
 file name that's I'm sure it works is "testfile2.txt"
 help Command: by typing help it shows how to use the OS.
 
+RUN IT: open command line in Windows then go to the folder containing all the C and header files.
+1- gcc -c kernel.c shell.c ...
+2. gcc -o mykernel kernel.o shell.o ...
+3. mykernel then Enter button.
+
 Main: implementing a simple Operating System which is capable of doind some command like. this OS has a shell memory ans it is able to 
 set some variable to some value as the user decides and can also retrieve it. can also executes scripts with the known command.
 
